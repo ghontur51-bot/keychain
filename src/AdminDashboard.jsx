@@ -1,0 +1,423 @@
+import React, { useState, useEffect } from 'react';
+import { collection, onSnapshot, updateDoc, doc, deleteDoc, addDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from './firebase';
+import { 
+  LayoutDashboard, ShoppingBag, Package, MapPin, Phone,
+  CheckCircle, ChefHat, Truck, Trash2, XCircle, Check, Play, Edit3, Plus, Image as ImageIcon, Star
+} from 'lucide-react';
+
+const ADMIN_PASSWORD = '74391';
+const ADMIN_SESSION_KEY = 'luminaAdminUnlocked';
+
+export default function AdminDashboard() {
+  const [isAdminUnlocked, setIsAdminUnlocked] = useState(() => sessionStorage.getItem(ADMIN_SESSION_KEY) === 'true');
+  const [password, setPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  
+  const [activeTab, setActiveTab] = useState('orders'); // 'orders', 'products'
+  const [orders, setOrders] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // New Product Form State
+  const [isAddingProduct, setIsAddingProduct] = useState(false);
+  const [editingProductId, setEditingProductId] = useState(null);
+  
+  const initialProductState = { name: '', category: 'Acrylic', desc: '', price: '', stock: '', images: [] };
+  const [productForm, setProductForm] = useState(initialProductState);
+  
+  // Img Upload State
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleImageUpload = (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+    
+    setIsUploading(true);
+    let completed = 0;
+    const newImages = [];
+
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          // Compression to ensure it fits entirely inside Firestore's 1MB limit easily
+          const MAX_SIZE = 600; 
+          
+          if (width > height && width > MAX_SIZE) {
+            height *= MAX_SIZE / width;
+            width = MAX_SIZE;
+          } else if (height > MAX_SIZE) {
+            width *= MAX_SIZE / height;
+            height = MAX_SIZE;
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          // Downscale to JPEG 0.7 to achieve ~30kb image strings
+          const dataURL = canvas.toDataURL('image/jpeg', 0.7);
+          newImages.push(dataURL);
+          
+          completed++;
+          setUploadProgress((completed / files.length) * 100);
+          
+          if (completed === files.length) {
+            setProductForm(prev => ({
+              ...prev, 
+              images: [...(prev.images || []), ...newImages]
+            }));
+            setIsUploading(false);
+            setUploadProgress(0);
+          }
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removeImage = (index) => {
+    setProductForm(prev => {
+      const newImages = [...prev.images];
+      newImages.splice(index, 1);
+      return { ...prev, images: newImages };
+    });
+  };
+
+  const setPrimaryImage = (index) => {
+    setProductForm(prev => {
+      const newImages = [...prev.images];
+      const selected = newImages.splice(index, 1)[0];
+      newImages.unshift(selected); // Put at front
+      return { ...prev, images: newImages };
+    });
+  };
+
+  useEffect(() => {
+    if (!isAdminUnlocked) return;
+    const unsubOrders = onSnapshot(collection(db, 'orders'), (snapshot) => {
+      const orderData = [];
+      snapshot.forEach(doc => orderData.push({ id: doc.id, ...doc.data() }));
+      orderData.sort((a, b) => b.createdAt?.toMillis() - a.createdAt?.toMillis());
+      setOrders(orderData);
+    });
+    const unsubProducts = onSnapshot(collection(db, 'products'), (snapshot) => {
+      const productData = [];
+      snapshot.forEach(doc => productData.push({ id: doc.id, ...doc.data() }));
+      setProducts(productData);
+      setLoading(false);
+    });
+    return () => { unsubOrders(); unsubProducts(); };
+  }, [isAdminUnlocked]);
+
+  const handleAdminLogin = (e) => {
+    e.preventDefault();
+    if (password.trim() !== ADMIN_PASSWORD) {
+      setPasswordError('Incorrect password.');
+      return;
+    }
+    sessionStorage.setItem(ADMIN_SESSION_KEY, 'true');
+    setIsAdminUnlocked(true);
+    setPassword('');
+    setPasswordError('');
+  };
+
+  const updateOrderStatus = async (id, newStatus) => {
+    try { await updateDoc(doc(db, 'orders', id), { status: newStatus }); } 
+    catch (err) { alert("Error updating order: " + err.message); }
+  };
+
+  const deleteOrder = async (id) => {
+    if (window.confirm('Delete this order record permanently?')) {
+      await deleteDoc(doc(db, 'orders', id));
+    }
+  };
+
+  const handleProductSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const data = {
+        name: productForm.name,
+        category: productForm.category,
+        desc: productForm.desc,
+        price: parseFloat(productForm.price),
+        stock: parseInt(productForm.stock),
+        images: productForm.images?.length > 0 ? productForm.images : ['https://images.unsplash.com/photo-1584820927498-cafe2c17ab7b?auto=format&fit=crop&q=80&w=400']
+      };
+
+      if (editingProductId) {
+        await updateDoc(doc(db, 'products', editingProductId), data);
+      } else {
+        await addDoc(collection(db, 'products'), { ...data, createdAt: serverTimestamp() });
+      }
+
+      setProductForm(initialProductState);
+      setIsAddingProduct(false);
+      setEditingProductId(null);
+    } catch (err) {
+      alert("Error saving product: " + err.message);
+    }
+  };
+
+  const editProduct = (product) => {
+    // Migrate legacy 'img' to 'images' for backwards compatibility
+    const images = product.images ? product.images : (product.img ? [product.img] : []);
+    setProductForm({ ...product, images });
+    setEditingProductId(product.id);
+    setIsAddingProduct(true);
+  };
+
+  const deleteProduct = async (id) => {
+    if (window.confirm('Delete this product from the storefront?')) {
+      await deleteDoc(doc(db, 'products', id));
+    }
+  };
+
+  const totalRevenue = orders.reduce((acc, o) => acc + (o.total || 0), 0);
+
+  const getStatusConfig = (status) => {
+    switch(status) {
+      case 'pending': return { color: 'border-yellow-400', label: 'Pending', bg: 'bg-yellow-50' };
+      case 'preparing': return { color: 'border-orange-400', label: 'Crafting', bg: 'bg-orange-50' };
+      case 'out_for_delivery': return { color: 'border-blue-400', label: 'Shipped', bg: 'bg-blue-50' };
+      case 'delivered': return { color: 'border-green-400', label: 'Delivered', bg: 'bg-green-50' };
+      case 'rejected': return { color: 'border-red-400', label: 'Rejected', bg: 'bg-red-50' };
+      default: return { color: 'border-gray-200', label: status, bg: 'bg-gray-50' };
+    }
+  };
+
+  if (!isAdminUnlocked) {
+    return (
+      <div className="min-h-screen bg-[#F7F5FA] text-[#2A2431] flex items-center justify-center px-4">
+        <form onSubmit={handleAdminLogin} className="w-full max-w-sm bg-white rounded-[2.5rem] shadow-2xl border border-[#A284C5]/20 p-10">
+          <h1 className="text-3xl font-serif font-bold text-[#A284C5] mb-2 text-center">Admin Access</h1>
+          <p className="text-sm text-[#7E6A93] mb-8 text-center font-bold">Secure the cute vault.</p>
+          <input
+            autoFocus type="password" value={password} onChange={(e) => { setPassword(e.target.value); setPasswordError(''); }}
+            className="w-full bg-gray-50 border-2 border-transparent focus:border-[#A284C5] focus:bg-white rounded-xl p-4 text-sm outline-none transition-all"
+            placeholder="Enter unlock code"
+          />
+          {passwordError && <p className="text-xs text-red-500 font-bold mt-3 text-center">{passwordError}</p>}
+          <button type="submit" className="mt-6 w-full bg-[#A284C5] text-white rounded-xl px-5 py-4 font-bold text-sm shadow-[#A284C5]/30 shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all">
+            Enter Dashboard
+          </button>
+          <a href="/" className="block text-center mt-6 text-xs font-bold text-[#7E6A93] hover:text-[#A284C5] transition">← Back to Storefront</a>
+        </form>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[#F7F5FA] text-[#2A2431] flex font-sans">
+      <aside className="w-64 bg-white border-r border-[#A284C5]/10 p-6 flex flex-col shadow-sm">
+        <h1 className="text-2xl font-serif font-bold text-[#A284C5] mb-10 text-center tracking-wide">
+          Lumina Admin
+        </h1>
+        <nav className="space-y-3 flex-1 px-2">
+          <button onClick={() => setActiveTab('orders')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'orders' ? 'bg-[#A284C5] text-white shadow-md' : 'text-[#7E6A93] hover:bg-gray-50'}`}>
+            <ShoppingBag size={18} /> Orders <span className="ml-auto bg-[#2A2431]/10 text-[10px] px-2 py-0.5 rounded-full">{orders.length}</span>
+          </button>
+          <button onClick={() => setActiveTab('products')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'products' ? 'bg-[#A284C5] text-white shadow-md' : 'text-[#7E6A93] hover:bg-gray-50'}`}>
+            <Package size={18} /> Products <span className="ml-auto bg-[#2A2431]/10 text-[10px] px-2 py-0.5 rounded-full">{products.length}</span>
+          </button>
+        </nav>
+        <div className="pt-6 border-t border-[#A284C5]/10 text-center">
+          <a href="/" className="text-xs font-bold text-[#7E6A93] hover:text-[#A284C5] transition">← Back to Storefront</a>
+        </div>
+      </aside>
+
+      <main className="flex-1 p-8 md:p-12 overflow-y-auto w-full">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-4">
+          <div>
+            <h2 className="text-4xl font-serif font-bold text-[#A284C5] capitalize">{activeTab} CMS</h2>
+            <p className="text-sm font-bold text-[#7E6A93] mt-2">Manage your cute handcrafted items and orders.</p>
+          </div>
+          {activeTab === 'orders' && (
+            <div className="bg-white px-8 py-5 rounded-3xl shadow-sm border border-[#A284C5]/10 text-right">
+              <p className="text-[10px] text-[#A284C5] font-bold tracking-[0.2em] uppercase">Total Revenue</p>
+              <p className="text-3xl font-serif font-bold text-[#2A2431] mt-1">₹{totalRevenue.toFixed(2)}</p>
+            </div>
+          )}
+          {activeTab === 'products' && !isAddingProduct && (
+            <button onClick={() => setIsAddingProduct(true)} className="bg-[#A284C5] text-white px-6 py-3 rounded-full font-bold text-sm flex items-center gap-2 shadow-lg shadow-[#A284C5]/30 hover:scale-[1.02] transition-all">
+              <Plus size={16} /> New Product
+            </button>
+          )}
+        </div>
+
+        {loading ? (
+          <div className="flex justify-center items-center h-40">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#A284C5]" />
+          </div>
+        ) : activeTab === 'orders' ? (
+          <div className="grid gap-6">
+            {orders.length === 0 ? <p className="text-[#7E6A93] font-bold">No orders received yet.</p> : orders.map(order => {
+              const statusInfo = getStatusConfig(order.status);
+              return (
+                <div key={order.id} className={`bg-white rounded-3xl p-6 md:p-8 shadow-sm border-l-8 transition-all ${statusInfo.color} ${order.status === 'delivered' || order.status === 'rejected' ? 'opacity-75' : ''}`}>
+                  <div className="flex flex-col md:flex-row justify-between items-start mb-6 gap-4">
+                    <div>
+                      <div className="flex items-center gap-3">
+                        <h3 className="font-bold text-xl">{order.customer?.name}</h3>
+                        <span className={`text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider ${statusInfo.bg} ${statusInfo.color.replace('border', 'text')}`}>
+                          {statusInfo.label}
+                        </span>
+                      </div>
+                      <div className="text-xs font-bold text-[#7E6A93] flex flex-wrap items-center gap-4 mt-3">
+                        <span className="flex items-center gap-1"><MapPin size={14} className="text-[#A284C5]"/> {order.customer?.address}</span>
+                        <span className="flex items-center gap-1"><Phone size={14} className="text-[#A284C5]"/> {order.customer?.phone}</span>
+                        <span className="flex items-center gap-1 opacity-50">User: {order.userEmail}</span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-3xl font-serif font-bold text-[#2A2431]">₹{order.total?.toFixed(2)}</p>
+                    </div>
+                  </div>
+
+                  <div className="bg-[#F7F5FA] rounded-2xl p-5 mb-6">
+                    <p className="text-[10px] font-bold text-[#A284C5] mb-3 uppercase tracking-[0.2em]">Craft Items Ordered</p>
+                    {order.items?.map((item, i) => (
+                      <div key={i} className="text-sm flex justify-between py-2 border-b border-[#A284C5]/10 last:border-0 font-bold text-[#7E6A93]">
+                        <span><span className="text-[#A284C5]">{item.qty}x</span> {item.name}</span>
+                        <span className="text-[#2A2431]">₹{(item.price * item.qty).toFixed(2)}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex gap-3 justify-between items-center bg-gray-50 p-2 rounded-xl">
+                    <button onClick={() => deleteOrder(order.id)} className="p-3 bg-white rounded-lg text-gray-400 hover:text-red-500 hover:shadow-sm transition-all" title="Delete Record">
+                      <Trash2 size={16} />
+                    </button>
+                    
+                    <div className="flex gap-2">
+                      <div className="flex flex-wrap gap-2">
+                        <button onClick={() => updateOrderStatus(order.id, 'pending')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${order.status === 'pending' ? 'bg-purple-100 text-purple-700 shadow-sm border border-purple-200' : 'bg-white text-gray-400 border hover:bg-purple-50'}`}>Pending</button>
+                        
+                        <button onClick={() => updateOrderStatus(order.id, 'preparing')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${order.status === 'preparing' ? 'bg-fuchsia-100 text-fuchsia-700 shadow-sm border border-fuchsia-200' : 'bg-white text-gray-400 border hover:bg-fuchsia-50'}`}>Crafting</button>
+                        
+                        <button onClick={() => updateOrderStatus(order.id, 'out_for_delivery')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${order.status === 'out_for_delivery' ? 'bg-blue-100 text-blue-700 shadow-sm border border-blue-200' : 'bg-white text-gray-400 border hover:bg-blue-50'}`}>Shipped</button>
+                        
+                        <button onClick={() => updateOrderStatus(order.id, 'delivered')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${order.status === 'delivered' ? 'bg-[#EBE6F0] text-green-800 shadow-sm border border-green-200' : 'bg-white text-gray-400 border hover:bg-green-50'}`}>Delivered</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {isAddingProduct && (
+              <div className="bg-white p-8 rounded-[2.5rem] shadow-xl border border-[#A284C5]/20 mb-10 animate-in slide-in-from-top-4 fade-in duration-300">
+                <div className="flex justify-between items-center mb-6">
+                   <h3 className="text-2xl font-serif font-bold text-[#2A2431]">{editingProductId ? 'Edit Product' : 'Add New Keychain'}</h3>
+                   <button onClick={() => { setIsAddingProduct(false); setProductForm(initialProductState); setEditingProductId(null); }} className="p-2 bg-gray-50 text-gray-400 rounded-full hover:bg-gray-100"><XCircle size={18}/></button>
+                </div>
+                <form onSubmit={handleProductSubmit} className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-[#A284C5] ml-2 uppercase">Product Name</label>
+                      <input required type="text" value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} className="w-full bg-gray-50 border-2 border-transparent focus:border-[#A284C5] focus:bg-white rounded-xl p-3 text-sm font-bold outline-none transition-all" placeholder="E.g. Pastel Bear Charm" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-[#A284C5] ml-2 uppercase">Category</label>
+                      <input required type="text" list="categoryList" value={productForm.category} onChange={e => setProductForm({...productForm, category: e.target.value})} className="w-full bg-gray-50 border-2 border-transparent focus:border-[#A284C5] focus:bg-white rounded-xl p-3 text-sm font-bold outline-none transition-all" placeholder="Type new or select existing..." />
+                      <datalist id="categoryList">
+                        {[...new Set(products.map(p => p.category))].map(cat => (
+                          <option key={cat} value={cat} />
+                        ))}
+                      </datalist>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-[#A284C5] ml-2 uppercase">Handmade Description / Specs</label>
+                    <textarea required value={productForm.desc} onChange={e => setProductForm({...productForm, desc: e.target.value})} className="w-full bg-gray-50 border-2 border-transparent focus:border-[#A284C5] focus:bg-white rounded-xl p-3 text-sm font-bold outline-none transition-all resize-none h-24" placeholder="Detail the charm, material, and handcrafted love put into this..." />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-[#A284C5] ml-2 uppercase">Price (₹)</label>
+                      <input required type="number" step="1" value={productForm.price} onChange={e => setProductForm({...productForm, price: e.target.value})} className="w-full bg-gray-50 border-2 border-transparent focus:border-[#A284C5] focus:bg-white rounded-xl p-3 text-sm font-bold outline-none transition-all" placeholder="499" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-[#A284C5] ml-2 uppercase">Quantity in Stock</label>
+                      <input required type="number" value={productForm.stock} onChange={e => setProductForm({...productForm, stock: e.target.value})} className="w-full bg-gray-50 border-2 border-transparent focus:border-[#A284C5] focus:bg-white rounded-xl p-3 text-sm font-bold outline-none transition-all" placeholder="50" />
+                    </div>
+                    <div className="space-y-1 flex flex-col justify-end">
+                      <label className="text-[10px] font-bold text-[#A284C5] ml-2 uppercase">Upload Images</label>
+                      <input type="file" multiple accept="image/*" onChange={handleImageUpload} className="w-full bg-gray-50 border-2 border-transparent focus:border-[#A284C5] focus:bg-white rounded-xl p-2 text-sm font-bold outline-none transition-all file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#A284C5]/10 file:text-[#A284C5] hover:file:bg-[#A284C5]/20 cursor-pointer" />
+                      {isUploading && <div className="text-[10px] font-bold text-[#A284C5] ml-2">Uploading: {Math.round(uploadProgress)}%</div>}
+                    </div>
+                  </div>
+
+                  {productForm.images?.length > 0 && (
+                    <div className="bg-gray-50 rounded-xl p-4 border border-[#A284C5]/10">
+                       <label className="text-[10px] font-bold text-[#A284C5] uppercase mb-3 block">Image Gallery (First is Cover)</label>
+                       <div className="flex gap-4 overflow-x-auto pb-2">
+                          {productForm.images.map((img, idx) => (
+                            <div key={idx} className={`relative w-24 h-24 rounded-xl shrink-0 overflow-hidden border-2 transition-all ${idx === 0 ? 'border-[#A284C5] shadow-lg' : 'border-transparent opacity-80 hover:opacity-100'}`}>
+                               <img src={img} className="w-full h-full object-cover" />
+                               <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                  {idx !== 0 && (
+                                    <button type="button" onClick={() => setPrimaryImage(idx)} className="p-1.5 bg-white text-yellow-500 rounded-full hover:scale-110" title="Set as primary"><Star size={12}/></button>
+                                  )}
+                                  <button type="button" onClick={() => removeImage(idx)} className="p-1.5 bg-white text-red-500 rounded-full hover:scale-110" title="Delete"><Trash2 size={12}/></button>
+                               </div>
+                               {idx === 0 && <span className="absolute top-1 left-1 bg-[#A284C5] text-white text-[8px] font-bold px-2 py-0.5 rounded-full">COVER</span>}
+                            </div>
+                          ))}
+                       </div>
+                    </div>
+                  )}
+
+                  <button type="submit" className="w-full bg-[#A284C5] text-white py-4 rounded-xl font-bold mt-4 shadow-lg shadow-[#A284C5]/30">
+                    {editingProductId ? 'Update Keychain' : 'Save New Keychain to Store'}
+                  </button>
+                </form>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {products.length === 0 && !isAddingProduct && <p className="text-[#7E6A93] font-bold col-span-full">No keychains in store yet.</p>}
+              {products.map(product => {
+                const imgSource = Array.isArray(product.images) && product.images.length > 0 ? product.images[0] : (product.img || 'https://images.unsplash.com/photo-1584820927498-cafe2c17ab7b');
+                
+                return (
+                <div key={product.id} className="bg-white rounded-3xl p-5 border border-[#A284C5]/10 shadow-sm flex flex-col hover:shadow-xl transition-shadow relative overflow-hidden group">
+                  <div className="absolute top-4 right-4 z-10 space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => editProduct(product)} className="w-8 h-8 bg-white text-blue-500 rounded-full shadow border flex justify-center items-center hover:scale-105"><Edit3 size={14}/></button>
+                    <button onClick={() => deleteProduct(product.id)} className="w-8 h-8 bg-white text-red-500 rounded-full shadow border flex justify-center items-center hover:scale-105"><Trash2 size={14}/></button>
+                  </div>
+                  <img src={imgSource} alt={product.name} className="w-full h-40 object-cover rounded-2xl mb-4 bg-gray-50" />
+                  <div className="flex-1">
+                    <div className="flex justify-between items-start mb-1">
+                      <h3 className="font-bold text-lg text-[#2A2431] leading-tight pr-2">{product.name}</h3>
+                    </div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#A284C5] bg-[#A284C5]/10 px-2 py-0.5 rounded-full inline-block mb-2">{product.category}</span>
+                    <p className="text-xs text-[#7E6A93] font-medium line-clamp-2 leading-relaxed mb-4">{product.desc}</p>
+                  </div>
+                  <div className="flex justify-between items-end pt-3 border-t border-gray-100">
+                    <div>
+                      <p className="text-xs font-bold text-gray-400 uppercase">Stock</p>
+                      <p className="text-sm font-bold text-[#2A2431]">{product.stock}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xl font-serif font-bold text-[#A284C5]">₹{Number(product.price).toFixed(2)}</p>
+                    </div>
+                  </div>
+                </div>
+              )})}
+            </div>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
