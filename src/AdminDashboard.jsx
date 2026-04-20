@@ -216,25 +216,28 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F7F5FA] text-[#2A2431] flex font-sans">
-      <aside className="w-64 bg-white border-r border-[#A284C5]/10 p-6 flex flex-col shadow-sm">
-        <h1 className="text-2xl font-serif font-bold text-[#A284C5] mb-10 text-center tracking-wide">
-          Lumina Admin
-        </h1>
-        <nav className="space-y-3 flex-1 px-2">
-          <button onClick={() => setActiveTab('orders')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'orders' ? 'bg-[#A284C5] text-white shadow-md' : 'text-[#7E6A93] hover:bg-gray-50'}`}>
-            <ShoppingBag size={18} /> Orders <span className="ml-auto bg-[#2A2431]/10 text-[10px] px-2 py-0.5 rounded-full">{orders.length}</span>
+    <div className="min-h-screen bg-[#F7F5FA] text-[#2A2431] flex flex-col md:flex-row font-sans">
+      <aside className="w-full md:w-64 bg-white border-b md:border-b-0 md:border-r border-[#A284C5]/10 p-4 md:p-6 flex flex-col shadow-sm shrink-0">
+        <div className="flex md:flex-col justify-between items-center md:items-stretch mb-4 md:mb-10">
+          <h1 className="text-xl md:text-2xl font-serif font-bold text-[#A284C5] text-center tracking-wide">
+            Lumina Admin
+          </h1>
+          <a href="/" className="md:hidden text-xs font-bold text-[#7E6A93] hover:text-[#A284C5] transition">← Storefront</a>
+        </div>
+        <nav className="flex md:flex-col space-x-3 md:space-x-0 md:space-y-3 px-2 overflow-x-auto no-scrollbar pb-2 md:pb-0">
+          <button onClick={() => setActiveTab('orders')} className={`whitespace-nowrap flex-1 md:flex-none flex items-center justify-center md:justify-start gap-2 md:gap-3 px-4 py-2.5 md:py-3 rounded-xl font-bold transition-all ${activeTab === 'orders' ? 'bg-[#A284C5] text-white shadow-md' : 'text-[#7E6A93] hover:bg-gray-50 bg-gray-50 md:bg-transparent'}`}>
+            <ShoppingBag size={18} /> Orders <span className="ml-2 md:ml-auto bg-[#2A2431]/10 text-[10px] px-2 py-0.5 rounded-full">{orders.length}</span>
           </button>
-          <button onClick={() => setActiveTab('products')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'products' ? 'bg-[#A284C5] text-white shadow-md' : 'text-[#7E6A93] hover:bg-gray-50'}`}>
-            <Package size={18} /> Products <span className="ml-auto bg-[#2A2431]/10 text-[10px] px-2 py-0.5 rounded-full">{products.length}</span>
+          <button onClick={() => setActiveTab('products')} className={`whitespace-nowrap flex-1 md:flex-none flex items-center justify-center md:justify-start gap-2 md:gap-3 px-4 py-2.5 md:py-3 rounded-xl font-bold transition-all ${activeTab === 'products' ? 'bg-[#A284C5] text-white shadow-md' : 'text-[#7E6A93] hover:bg-gray-50 bg-gray-50 md:bg-transparent'}`}>
+            <Package size={18} /> Products <span className="ml-2 md:ml-auto bg-[#2A2431]/10 text-[10px] px-2 py-0.5 rounded-full">{products.length}</span>
           </button>
         </nav>
-        <div className="pt-6 border-t border-[#A284C5]/10 text-center">
+        <div className="hidden md:block pt-6 border-t border-[#A284C5]/10 text-center mt-auto">
           <a href="/" className="text-xs font-bold text-[#7E6A93] hover:text-[#A284C5] transition">← Back to Storefront</a>
         </div>
       </aside>
 
-      <main className="flex-1 p-8 md:p-12 overflow-y-auto w-full">
+      <main className="flex-1 p-4 md:p-8 lg:p-12 overflow-y-auto w-full max-w-full">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-4">
           <div>
             <h2 className="text-4xl font-serif font-bold text-[#A284C5] capitalize">{activeTab} CMS</h2>
@@ -263,21 +266,22 @@ export default function AdminDashboard() {
               const statusInfo = getStatusConfig(order.status);
               return (
                 <div key={order.id} className={`bg-white rounded-3xl p-6 md:p-8 shadow-sm border-l-8 transition-all ${statusInfo.color} ${order.status === 'delivered' || order.status === 'rejected' ? 'opacity-75' : ''}`}>
-                  <div className="flex flex-col md:flex-row justify-between items-start mb-6 gap-4">
-                    <div>
-                      <div className="flex items-center gap-3">
+                  <div className="flex flex-col lg:flex-row justify-between items-start mb-6 gap-4">
+                    <div className="w-full lg:w-auto">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
                         <h3 className="font-bold text-xl">{order.customer?.name}</h3>
-                        <span className={`text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider ${statusInfo.bg} ${statusInfo.color.replace('border', 'text')}`}>
+                        <span className={`w-fit text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider ${statusInfo.bg} ${statusInfo.color.replace('border', 'text')}`}>
                           {statusInfo.label}
                         </span>
                       </div>
-                      <div className="text-xs font-bold text-[#7E6A93] flex flex-wrap items-center gap-4 mt-3">
-                        <span className="flex items-center gap-1"><MapPin size={14} className="text-[#A284C5]"/> {order.customer?.address}</span>
-                        <span className="flex items-center gap-1"><Phone size={14} className="text-[#A284C5]"/> {order.customer?.phone}</span>
-                        <span className="flex items-center gap-1 opacity-50">User: {order.userEmail}</span>
+                      <div className="text-xs font-bold text-[#7E6A93] flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-4 mt-3 bg-gray-50 p-3 sm:p-0 sm:bg-transparent rounded-lg">
+                        <span className="flex items-center gap-2"><MapPin size={14} className="text-[#A284C5] flex-shrink-0"/> <span className="truncate max-w-[200px] sm:max-w-xs">{order.customer?.address}</span></span>
+                        <span className="flex items-center gap-2"><Phone size={14} className="text-[#A284C5] flex-shrink-0"/> {order.customer?.phone}</span>
+                        <span className="flex items-center gap-2 opacity-50"><Mail size={14} className="sm:hidden text-gray-400 flex-shrink-0"/> <span className="truncate max-w-[200px]">{order.userEmail}</span></span>
                       </div>
                     </div>
-                    <div className="text-right">
+                    <div className="text-left lg:text-right w-full lg:w-auto bg-[#A284C5]/5 lg:bg-transparent p-4 lg:p-0 rounded-xl">
+                      <p className="text-[10px] uppercase font-bold text-[#A284C5] lg:hidden mb-1 tracking-wider">Total Amount</p>
                       <p className="text-3xl font-serif font-bold text-[#2A2431]">₹{order.total?.toFixed(2)}</p>
                     </div>
                   </div>
@@ -292,18 +296,18 @@ export default function AdminDashboard() {
                     ))}
                   </div>
 
-                  <div className="flex gap-3 justify-between items-center bg-gray-50 p-2 rounded-xl">
-                    <button onClick={() => deleteOrder(order.id)} className="p-3 bg-white rounded-lg text-gray-400 hover:text-red-500 hover:shadow-sm transition-all" title="Delete Record">
-                      <Trash2 size={16} />
+                  <div className="flex flex-wrap md:flex-nowrap gap-3 justify-between items-center bg-gray-50 p-3 rounded-xl">
+                    <button onClick={() => deleteOrder(order.id)} className="w-full md:w-auto p-3 bg-white border border-gray-100 rounded-lg text-gray-400 hover:text-red-500 hover:border-red-100 hover:shadow-sm transition-all flex justify-center items-center gap-2 order-last md:order-first" title="Delete Record">
+                      <Trash2 size={16} /> <span className="md:hidden font-bold text-sm">Delete Record</span>
                     </button>
                     
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap w-full md:w-auto gap-2 justify-end order-first md:order-last">
                       {order.status === 'pending' && (
                         <>
-                          <button onClick={() => updateOrderStatus(order.id, 'rejected')} className="flex items-center gap-2 px-4 py-2 bg-red-100 text-red-600 rounded-lg font-bold text-xs hover:bg-red-200 transition-all shadow-sm border border-red-200">
+                          <button onClick={() => updateOrderStatus(order.id, 'rejected')} className="flex-1 md:flex-none justify-center flex items-center gap-2 px-4 py-3 md:py-2 bg-red-100 text-red-600 rounded-lg font-bold text-xs hover:bg-red-200 transition-all shadow-sm border border-red-200">
                             Cancel
                           </button>
-                          <button onClick={() => updateOrderStatus(order.id, 'preparing')} className="flex items-center gap-2 px-5 py-2 hover:bg-green-600 bg-green-500 text-white rounded-lg font-bold text-xs shadow-md shadow-green-500/20 hover:scale-105 active:scale-95 transition-all">
+                          <button onClick={() => updateOrderStatus(order.id, 'preparing')} className="flex-1 md:flex-none justify-center flex items-center gap-2 px-5 py-3 md:py-2 hover:bg-green-600 bg-green-500 text-white rounded-lg font-bold text-xs shadow-md shadow-green-500/20 hover:scale-105 active:scale-95 transition-all">
                             Accept Order
                           </button>
                         </>
@@ -311,23 +315,23 @@ export default function AdminDashboard() {
 
                       {order.status === 'preparing' && (
                         <>
-                          <button onClick={() => updateOrderStatus(order.id, 'rejected')} className="flex items-center gap-2 px-4 py-2 border-2 border-red-100 text-red-500 rounded-lg font-bold text-xs hover:bg-red-50 transition-all">
+                          <button onClick={() => updateOrderStatus(order.id, 'rejected')} className="flex-1 md:flex-none justify-center flex items-center gap-2 px-4 py-3 md:py-2 border-2 border-red-100 text-red-500 rounded-lg font-bold text-xs hover:bg-red-50 transition-all">
                             Cancel
                           </button>
-                          <button onClick={() => updateOrderStatus(order.id, 'out_for_delivery')} className="flex items-center gap-2 px-5 py-2.5 bg-blue-500 text-white rounded-lg font-bold text-xs shadow-md shadow-blue-500/20 hover:scale-105 active:scale-95 transition-all">
+                          <button onClick={() => updateOrderStatus(order.id, 'out_for_delivery')} className="flex-1 md:flex-none justify-center flex items-center gap-2 px-5 py-3 md:py-2.5 bg-blue-500 text-white rounded-lg font-bold text-xs shadow-md shadow-blue-500/20 hover:scale-105 active:scale-95 transition-all">
                             Ship Order
                           </button>
                         </>
                       )}
 
                       {order.status === 'out_for_delivery' && (
-                        <button onClick={() => updateOrderStatus(order.id, 'delivered')} className="flex items-center gap-2 px-5 py-2.5 bg-[#A284C5] text-white rounded-lg font-bold text-xs shadow-md shadow-[#A284C5]/20 hover:scale-105 active:scale-95 transition-all">
+                        <button onClick={() => updateOrderStatus(order.id, 'delivered')} className="w-full md:w-auto justify-center flex items-center gap-2 px-5 py-3 md:py-2.5 bg-[#A284C5] text-white rounded-lg font-bold text-xs shadow-md shadow-[#A284C5]/20 hover:scale-105 active:scale-95 transition-all">
                           Mark Delivered
                         </button>
                       )}
 
-                      {order.status === 'delivered' && ( <span className="flex items-center gap-1 text-green-600 font-bold text-xs px-4 py-2 bg-green-50 rounded-lg text-center border border-green-200">Fulfilled</span> )}
-                      {order.status === 'rejected' && ( <span className="flex items-center gap-1 text-red-600 font-bold text-xs px-4 py-2 bg-red-50 rounded-lg text-center border border-red-200">Cancelled</span> )}
+                      {order.status === 'delivered' && ( <span className="w-full md:w-auto justify-center flex items-center gap-1 text-green-600 font-bold text-xs px-4 py-3 md:py-2 bg-green-50 rounded-lg text-center border border-green-200">Fulfilled</span> )}
+                      {order.status === 'rejected' && ( <span className="w-full md:w-auto justify-center flex items-center gap-1 text-red-600 font-bold text-xs px-4 py-3 md:py-2 bg-red-50 rounded-lg text-center border border-red-200">Cancelled</span> )}
                     </div>
                   </div>
                 </div>
