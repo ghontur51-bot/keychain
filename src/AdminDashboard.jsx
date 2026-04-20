@@ -3,7 +3,7 @@ import { collection, onSnapshot, updateDoc, doc, deleteDoc, addDoc, serverTimest
 import { db } from './firebase';
 import { 
   LayoutDashboard, ShoppingBag, Package, MapPin, Phone,
-  CheckCircle, ChefHat, Truck, Trash2, XCircle, Check, Play, Edit3, Plus, Image as ImageIcon, Star
+  CheckCircle, ChefHat, Truck, Trash2, XCircle, Check, Play, Edit3, Plus, Image as ImageIcon, Star, Mail
 } from 'lucide-react';
 
 const ADMIN_PASSWORD = '74391';
