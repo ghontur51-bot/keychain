@@ -298,15 +298,36 @@ export default function AdminDashboard() {
                     </button>
                     
                     <div className="flex gap-2">
-                      <div className="flex flex-wrap gap-2">
-                        <button onClick={() => updateOrderStatus(order.id, 'pending')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${order.status === 'pending' ? 'bg-purple-100 text-purple-700 shadow-sm border border-purple-200' : 'bg-white text-gray-400 border hover:bg-purple-50'}`}>Pending</button>
-                        
-                        <button onClick={() => updateOrderStatus(order.id, 'preparing')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${order.status === 'preparing' ? 'bg-fuchsia-100 text-fuchsia-700 shadow-sm border border-fuchsia-200' : 'bg-white text-gray-400 border hover:bg-fuchsia-50'}`}>Crafting</button>
-                        
-                        <button onClick={() => updateOrderStatus(order.id, 'out_for_delivery')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${order.status === 'out_for_delivery' ? 'bg-blue-100 text-blue-700 shadow-sm border border-blue-200' : 'bg-white text-gray-400 border hover:bg-blue-50'}`}>Shipped</button>
-                        
-                        <button onClick={() => updateOrderStatus(order.id, 'delivered')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${order.status === 'delivered' ? 'bg-[#EBE6F0] text-green-800 shadow-sm border border-green-200' : 'bg-white text-gray-400 border hover:bg-green-50'}`}>Delivered</button>
-                      </div>
+                      {order.status === 'pending' && (
+                        <>
+                          <button onClick={() => updateOrderStatus(order.id, 'rejected')} className="flex items-center gap-2 px-4 py-2 bg-red-100 text-red-600 rounded-lg font-bold text-xs hover:bg-red-200 transition-all shadow-sm border border-red-200">
+                            Cancel
+                          </button>
+                          <button onClick={() => updateOrderStatus(order.id, 'preparing')} className="flex items-center gap-2 px-5 py-2 hover:bg-green-600 bg-green-500 text-white rounded-lg font-bold text-xs shadow-md shadow-green-500/20 hover:scale-105 active:scale-95 transition-all">
+                            Accept Order
+                          </button>
+                        </>
+                      )}
+
+                      {order.status === 'preparing' && (
+                        <>
+                          <button onClick={() => updateOrderStatus(order.id, 'rejected')} className="flex items-center gap-2 px-4 py-2 border-2 border-red-100 text-red-500 rounded-lg font-bold text-xs hover:bg-red-50 transition-all">
+                            Cancel
+                          </button>
+                          <button onClick={() => updateOrderStatus(order.id, 'out_for_delivery')} className="flex items-center gap-2 px-5 py-2.5 bg-blue-500 text-white rounded-lg font-bold text-xs shadow-md shadow-blue-500/20 hover:scale-105 active:scale-95 transition-all">
+                            Ship Order
+                          </button>
+                        </>
+                      )}
+
+                      {order.status === 'out_for_delivery' && (
+                        <button onClick={() => updateOrderStatus(order.id, 'delivered')} className="flex items-center gap-2 px-5 py-2.5 bg-[#A284C5] text-white rounded-lg font-bold text-xs shadow-md shadow-[#A284C5]/20 hover:scale-105 active:scale-95 transition-all">
+                          Mark Delivered
+                        </button>
+                      )}
+
+                      {order.status === 'delivered' && ( <span className="flex items-center gap-1 text-green-600 font-bold text-xs px-4 py-2 bg-green-50 rounded-lg text-center border border-green-200">Fulfilled</span> )}
+                      {order.status === 'rejected' && ( <span className="flex items-center gap-1 text-red-600 font-bold text-xs px-4 py-2 bg-red-50 rounded-lg text-center border border-red-200">Cancelled</span> )}
                     </div>
                   </div>
                 </div>

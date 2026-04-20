@@ -97,7 +97,8 @@ const playSuccessChime = () => {
 };
 
 export default function App() {
-  const [isLoading, setIsLoading] = useState(true);
+  const [isAppBooting, setIsAppBooting] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [activeTab, setActiveTab] = useState('All');
   const [cart, setCart] = useState([]);
@@ -113,6 +114,7 @@ export default function App() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState('login');
   const [authError, setAuthError] = useState('');
+  const [zoomedImage, setZoomedImage] = useState(null);
   
   const [userBookings, setUserBookings] = useState([]);
   const [userOrders, setUserOrders] = useState([]);
@@ -284,7 +286,7 @@ export default function App() {
 
   const submitOrder = async (e) => {
     e.preventDefault();
-    if(cart.length === 0) return;
+    if(cart.length === 0 || isLoading) return;
     if(!requireAuth()) return; 
     
     setIsLoading(true);
@@ -296,15 +298,6 @@ export default function App() {
           address: form.get('address')
       };
 
-      // ==========================================
-      // RAZORPAY TEMPORARILY DISABLED FOR TESTING
-      // ==========================================
-      /*
-      const isLoaded = await loadRazorpay();
-      if (!isLoaded) { ... }
-      */
-
-      // DIRECT FIREBASE PUSH (TESTING MODE ONLY)
       const data = {
           userId: user.uid,
           userEmail: user.email,
@@ -316,16 +309,23 @@ export default function App() {
           createdAt: serverTimestamp()
       };
       
-      await addDoc(collection(db, 'orders'), data);
-      
+      // ==========================================
+      // BUTTER SMOOTH UX: Immediate Success Trigger
+      // ==========================================
       setCart([]);
       setIsCheckoutModalOpen(false);
-      triggerSuccessExperience("Test Order Confirmed!", "Razorpay is currently OFF for testing. Order saved directly.");
+      triggerSuccessExperience("Test Order Confirmed!", "Razorpay is currently OFF. Order synced directly.");
       setBookingView('dashboard');
+      
+      // Async Background Firestore Push (eliminates network lag)
+      addDoc(collection(db, 'orders'), data).catch(err => {
+         console.error("Firebase Sync Error", err);
+         alert("Background sync failed. Check connection.");
+      });
 
     } catch(err) {
       console.error(err);
-      alert("Checkout Backend Setup Error: " + err.message);
+      alert("Checkout Logic Error: " + err.message);
     } finally {
       setIsLoading(false);
     }
@@ -372,7 +372,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen font-sans selection:bg-[#EBE6F0] selection:text-[#2A2431] relative w-full overflow-x-hidden" style={{ backgroundColor: COLORS.cream }}>
-      {isLoading && <Loader onFinish={() => setIsLoading(false)} />}
+      {isAppBooting && <Loader onFinish={() => setIsAppBooting(false)} />}
       
       {/* NAVBAR */}
       <nav className={`fixed top-0 w-full z-50 transition-all duration-700 ${isScrolled ? 'bg-white/90 backdrop-blur-xl shadow-lg py-3' : 'bg-transparent py-4'}`}>
@@ -551,7 +551,13 @@ export default function App() {
             {/* Image Preview */}
             <div className="w-full md:w-1/2 shrink-0 bg-gradient-to-br from-white to-[#F7F5FA]/50 relative p-8 flex flex-col justify-center items-center overflow-hidden">
                <div className="w-full h-56 md:h-72 flex items-center justify-center p-2 mb-4">
-                 <img src={Array.isArray(selectedProduct.images) && selectedProduct.images.length > 0 ? (selectedProduct.images[selectedImageIdx] || selectedProduct.images[0]) : (selectedProduct.img || 'https://images.unsplash.com/photo-1584820927498-cafe2c17ab7b?auto=format&fit=crop&w=400')} onError={(e)=> {e.target.src='https://images.unsplash.com/photo-1584820927498-cafe2c17ab7b?auto=format&fit=crop&w=400';}} alt={selectedProduct.name} className="max-w-full max-h-full object-contain rounded-2xl animate-in zoom-in duration-300 shadow-xl bg-white p-2 border border-[#A284C5]/10" />
+                 <img 
+                    onClick={() => setZoomedImage(Array.isArray(selectedProduct.images) && selectedProduct.images.length > 0 ? (selectedProduct.images[selectedImageIdx] || selectedProduct.images[0]) : (selectedProduct.img || 'https://images.unsplash.com/photo-1584820927498-cafe2c17ab7b?auto=format&fit=crop&w=400'))}
+                    src={Array.isArray(selectedProduct.images) && selectedProduct.images.length > 0 ? (selectedProduct.images[selectedImageIdx] || selectedProduct.images[0]) : (selectedProduct.img || 'https://images.unsplash.com/photo-1584820927498-cafe2c17ab7b?auto=format&fit=crop&w=400')} 
+                    onError={(e)=> {e.target.src='https://images.unsplash.com/photo-1584820927498-cafe2c17ab7b?auto=format&fit=crop&w=400';}} 
+                    alt={selectedProduct.name} 
+                    className="max-w-full max-h-full object-contain rounded-2xl animate-in zoom-in duration-300 shadow-xl bg-white p-2 border border-[#A284C5]/10 cursor-zoom-in hover:scale-105 transition-transform" 
+                 />
                </div>
               
               {Array.isArray(selectedProduct.images) && selectedProduct.images.length > 1 && (
@@ -696,8 +702,8 @@ export default function App() {
                  <textarea name="address" required rows="3" placeholder="Apt 123, Coffee Street..." className="w-full bg-gray-50 border-2 border-transparent focus:border-[#A284C5] focus:bg-white rounded-xl p-4 text-sm outline-none transition-all resize-none" />
               </div>
               
-              <Button type="submit" variant="primary" className="w-full py-4 text-lg font-bold shadow-lg shadow-[#A284C5]/20 mt-4">
-                Confirm Purchase · ₹{cartTotal.toFixed(2)}
+              <Button type="submit" disabled={isLoading} variant="primary" className={`w-full py-4 text-lg font-bold shadow-lg mt-4 ${isLoading ? 'opacity-50 cursor-not-allowed shadow-none' : 'shadow-[#A284C5]/20'}`}>
+                {isLoading ? 'Confirming...' : `Confirm Purchase · ₹${cartTotal.toFixed(2)}`}
               </Button>
             </form>
           </div>
@@ -747,21 +753,31 @@ export default function App() {
       {successModal.isOpen && (
         <div className="fixed inset-0 z-[2500] flex items-center justify-center px-4 overflow-hidden">
           <div className="absolute inset-0 bg-black/10 transition-opacity duration-1000" onClick={() => setSuccessModal({isOpen:false})} />
+          
           <div className="relative bg-white border border-[#2A2431]/10 rounded-3xl p-10 md:p-14 max-w-md w-full text-center shadow-[0_20px_60px_-15px_rgba(126,106,147,0.15)] animate-in slide-in-from-bottom-12 fade-in duration-1000">
             <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 bg-white p-3 rounded-full border border-[#2A2431]/5 shadow-sm">
               <Sparkles size={24} className="text-[#A284C5]" />
             </div>
-            <div className="relative z-10 pt-4">
-              <p className="text-[10px] font-bold text-[#A284C5] uppercase tracking-[0.3em] mb-4">Lumina Café</p>
-              <img src="/thank_you_mascots.png" alt="Thank You" className="w-48 h-48 mx-auto mb-4 animate-rich-float object-contain" />
+            <div className="relative z-10 pt-2 flex flex-col items-center">
+              <img src="/thank_you_mascots.png" alt="Yay! Thank you" className="w-48 h-48 object-contain mb-4 animate-rich-float" />
+              <p className="text-[10px] font-bold text-[#A284C5] uppercase tracking-[0.3em] mb-2">Lumina Café</p>
               <h2 className="text-3xl md:text-4xl font-serif font-extrabold text-[#2A2431] leading-snug mb-3">{successModal.title}</h2>
-              <p className="text-sm text-[#7E6A93] max-w-xs mx-auto mb-8">{successModal.message}</p>
+              <p className="text-sm text-[#7E6A93] max-w-xs mx-auto mb-6">{successModal.message}</p>
               <div className="w-16 h-[2px] bg-[#A284C5]/40 mx-auto mb-8" />
               <button onClick={() => setSuccessModal({isOpen:false})} className="group flex items-center justify-center gap-2 mx-auto w-10 h-10 bg-gray-50 hover:bg-[#2A2431] rounded-full transition-all duration-300">
                 <X size={16} className="text-gray-400 group-hover:text-white transition-colors" />
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* FULLSCREEN IMAGE ZOOM MODAL */}
+      {zoomedImage && (
+        <div className="fixed inset-0 z-[3000] flex items-center justify-center px-4" onClick={() => setZoomedImage(null)}>
+          <div className="absolute inset-0 bg-black/90 backdrop-blur-sm transition-opacity duration-300" />
+          <button onClick={() => setZoomedImage(null)} className="absolute top-6 right-6 p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all z-10"><X size={24} /></button>
+          <img src={zoomedImage} alt="Fullscreen product preview" className="relative max-w-full max-h-[90vh] object-contain rounded-2xl shadow-2xl animate-in zoom-in-95 duration-300" />
         </div>
       )}
       <style>{`
