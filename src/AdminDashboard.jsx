@@ -220,7 +220,7 @@ export default function AdminDashboard() {
       <aside className="w-full md:w-64 bg-white border-b md:border-b-0 md:border-r border-[#A284C5]/10 p-4 md:p-6 flex flex-col shadow-sm shrink-0">
         <div className="flex md:flex-col justify-between items-center md:items-stretch mb-4 md:mb-10">
           <h1 className="text-xl md:text-2xl font-serif font-bold text-[#A284C5] text-center tracking-wide">
-            Lumina Admin
+            Cozy Threads Admin
           </h1>
           <a href="/" className="md:hidden text-xs font-bold text-[#7E6A93] hover:text-[#A284C5] transition">← Storefront</a>
         </div>
