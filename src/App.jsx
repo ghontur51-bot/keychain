@@ -427,7 +427,7 @@ export default function App() {
             Tiny <span className="text-[#A284C5] italic">Pieces</span><br />of Joy.
           </h1>
           <p className="text-sm md:text-xl text-white/90 mb-8 md:mb-12 max-w-md md:max-w-xl font-medium drop-shadow-md">
-            Aesthetic, soft, and completely handcrafted keychains designed to add a spark of magic to your everyday life.
+            Aesthetic handcrafted items , designed to sprinkle little threads of magic in your everyday life.
           </p>
           <div className="flex flex-col sm:flex-row gap-4">
             <Button variant="primary" className="w-full sm:w-auto text-base py-5 px-8 shadow-[#A284C5]/30 shadow-2xl" onClick={() => document.getElementById('menu').scrollIntoView({ behavior: 'smooth' })}>Explore Collection</Button>
