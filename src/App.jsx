@@ -416,8 +416,17 @@ export default function App() {
           <div className="absolute inset-0 bg-gradient-to-b from-[#2A2431]/80 via-[#2A2431]/30 to-[#2A2431]/80 md:bg-gradient-to-r md:from-[#2A2431]/80 md:via-[#2A2431]/40 md:to-transparent z-10" />
           <picture>
             <source media="(min-width: 768px)" srcSet="/hero_pc.jpg" />
-            <img src="/hero_phone.jpg" alt="Cozy Threads Handcrafted" className="w-full h-full object-cover animate-subtle-zoom" />
+            <img src="/hero_phone.jpg" alt="Cozy Threads Handcrafted" className="w-full h-full object-cover animate-subtle-breeze" />
           </picture>
+        </div>
+        
+        {/* Ambient Magical Particles */}
+        <div className="absolute inset-0 z-[5] pointer-events-none overflow-hidden">
+           <div className="absolute top-[15%] left-[10%] w-2 h-2 bg-white/50 rounded-full blur-[1px] animate-rich-float" style={{ animationDuration: '7s' }} />
+           <div className="absolute top-[55%] left-[25%] w-3 h-3 bg-white/30 rounded-full blur-[2px] animate-rich-float" style={{ animationDuration: '10s', animationDelay: '1s' }} />
+           <div className="absolute top-[25%] right-[15%] w-1.5 h-1.5 bg-[#A284C5]/60 rounded-full blur-[0.5px] animate-rich-float" style={{ animationDuration: '8s', animationDelay: '2s' }} />
+           <div className="absolute top-[65%] right-[30%] w-4 h-4 bg-[#A284C5]/20 rounded-full blur-[3px] animate-rich-float" style={{ animationDuration: '12s', animationDelay: '0.5s' }} />
+           <div className="absolute top-[85%] left-[45%] w-2 h-2 bg-white/40 rounded-full blur-[1px] animate-rich-float" style={{ animationDuration: '6s', animationDelay: '3s' }} />
         </div>
         <div className="relative z-10 px-6 md:px-12 lg:px-24 max-w-4xl text-white pt-10 md:pt-0">
           <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md border border-white/20 px-4 py-1.5 rounded-full text-[10px] md:text-sm font-medium mb-6 animate-in slide-in-from-bottom-4 shadow-lg shadow-black/20">
@@ -810,6 +819,13 @@ export default function App() {
         .animate-rich-float { animation: richFloat 5s ease-in-out infinite; }
         @keyframes zoomIn95 { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
         .zoom-in-95 { animation: zoomIn95 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        
+        @keyframes subtleBreeze {
+          0%, 100% { transform: scale(1.05) rotate(0deg) translate(0px, 0px); }
+          33% { transform: scale(1.08) rotate(1deg) translate(10px, -5px); }
+          66% { transform: scale(1.06) rotate(-0.5deg) translate(-5px, 8px); }
+        }
+        .animate-subtle-breeze { animation: subtleBreeze 20s ease-in-out infinite; transform-origin: center; }
       `}</style>
     </div>
   );
