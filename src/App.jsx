@@ -416,7 +416,7 @@ export default function App() {
           <div className="absolute inset-0 bg-gradient-to-b from-[#2A2431]/80 via-[#2A2431]/30 to-[#2A2431]/80 md:bg-gradient-to-r md:from-[#2A2431]/80 md:via-[#2A2431]/40 md:to-transparent z-10" />
           <picture>
             <source media="(min-width: 768px)" srcSet="/hero_pc.jpg" />
-            <img src="/hero_phone.jpg" alt="Cozy Threads Handcrafted" className="w-full h-full object-cover animate-subtle-breeze" />
+            <img src="/hero_phone.jpg" alt="Cozy Threads Handcrafted" className="w-full h-full object-cover" />
           </picture>
         </div>
         
